@@ -1,146 +1,164 @@
 #include "rules.h"
 #include "board.h"
 #include <iostream>
+#include <vector>
+#include <algorithm>
 
 bool isWhite(Piece p) {
 	return p >= WKing && p <= WPawn;
 }
 
-bool isBlack(Piece p) {
-	return p >= BKing && p <= BPawn;
+void getRookMoves(const Piece* board, const Point& pos, vector<Point>& moves)
+{
+	Point target;
+	for (int x = pos.x+1; x<8; ++x) {
+		target = Point(x, pos.y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
+	}
+	for (int x = pos.x-1; x>=0; --x) {
+		target = Point(x, pos.y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
+	}
+	for (int y = pos.y+1; y<8; ++y) {
+		target = Point(pos.x, y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
+	}
+	for (int y = pos.y-1; y>=0; --y) {
+		target = Point(pos.x, y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
+	}
 }
 
-bool bishopCanMove(const Piece* board, const Point& start, const Point& end, const Point& delta, string& errorMessage) 
+void getBishopMoves(const Piece* board, const Point& pos, vector<Point>& moves)
 {
-	if (delta.x != delta.y) {
-		errorMessage = "Move not diagonal";
-		return false;
+	for (int x = pos.x+1, y = pos.y+1; x<8 && y<8; ++x, ++y) {
+		Point target(x, y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
 	}
-	int dirx = end.x > start.x ? 1 : -1, diry = end.y > start.y ? 1 : -1;
-	for (int i = 1; i<delta.x; i++) {
-		int x = start.x + dirx * i, y = start.y + diry * i;
-		if (board[ix(x, y)] != Empty) {
-			errorMessage = "Piece in the way";
-			return false;
-		}
+	for (int x = pos.x+1, y = pos.y-1; x<8 && y>0; ++x, --y) {
+		Point target(x, y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
 	}
-	return true;
+	for (int x = pos.x-1, y = pos.y-1; x>=0 && y>=0; --x, --y) {
+		Point target(x, y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
+	}
+	for (int x = pos.x-1, y = pos.y+1; x>=0 && y<8; --x, ++y) {
+		Point target(x, y);
+		moves.push_back(target);
+		if (board[target.ind] != Empty)
+			break;
+	}
 }
 
-bool rookCanMove(const Piece* board, const Point& start, const Point& end, const Point& delta, string& errorMessage)
+void addPossibleMoves(const Piece* board, const Point& pos, vector<Point>& moves)
 {
-	if (!((delta.x == 0 && delta.y != 0) || (delta.y == 0 && delta.x != 0))) {
-		errorMessage = "Move not horizontal";
-		return false;
-	}
-	int dirx = delta.x != 0 ? (end.x > start.x ? 1 : -1) : 0;
-	int diry = delta.y != 0 ? (end.y > start.y ? 1 : -1) : 0;
-	int steps = max(abs(delta.x), abs(delta.y));
-	for (int i = 1; i<steps; ++i) {
-		int x = start.x + dirx * i, y = start.y + diry * i;
-		if (board[ix(x, y)] != Empty) {
-			errorMessage = "Piece in the way";
-			return false;
-		}
-	}
-	return true;
-}
-
-bool canMove(const Piece* board, const string& move, Point& start, Point& end, string& errorMessage)
-{
-	if (move.size() != 5 || move[2] != ' ') {
-		errorMessage = "Invalid move command expected B2 C2\n";
-		return false;
-	}
-	if (!Point::Parse(move[0], move[1], start)) {
-		errorMessage = "Invalid start position " + move.substr(0, 2);
-		return false;
-	}
-	if (!Point::Parse(move[3], move[4], end)) {
-		errorMessage = "Invalid end position " + move.substr(3, 2);
-		return false;
-	}
-
-	Point delta = {
-		abs(end.x - start.x),
-		abs(end.y - start.y),
-		0
-	};
-	Piece type = board[start.ind];
-	Piece target = board[end.ind];
-	if ((isBlack(type) && isBlack(target)) || (isWhite(type) && isWhite(target))) {
-		errorMessage = "Cannot take own piece";
-		return false;
-	}
-
-	switch (type) {
-		case Empty:
-			errorMessage = "Starting position empty";
-			return false;
-		case WKnight:
+	Piece type = board[pos.ind];
+	bool pieceIsWhite = isWhite(type);
+	switch (type)
+	{
 		case BKnight:
-			if ((delta.x == 1 && delta.y == 2) || (delta.x == 2 && delta.y == 1))
-				return true;
-
-			errorMessage = "Invalid knight move";
-			return false;
-		case WBishop:
-		case BBishop:
-			return bishopCanMove(board, start, end, delta, errorMessage);
-		case WRook:
+		case WKnight:
+		{
+			moves.push_back(Point(pos.x + 1, pos.y + 2));
+			moves.push_back(Point(pos.x - 1, pos.y + 2));
+			moves.push_back(Point(pos.x + 2, pos.y + 1));
+			moves.push_back(Point(pos.x - 2, pos.y + 1));
+			moves.push_back(Point(pos.x + 1, pos.y - 2));
+			moves.push_back(Point(pos.x - 1, pos.y - 2));
+			moves.push_back(Point(pos.x + 2, pos.y - 1));
+			moves.push_back(Point(pos.x - 2, pos.y - 1));
+		}
+			break;
 		case BRook:
-			return rookCanMove(board, start, end, delta, errorMessage);
+		case WRook:
+		{
+			getRookMoves(board, pos, moves);
+		}
+			break;
+		case BBishop:
+		case WBishop:
+		{
+			getBishopMoves(board, pos, moves);
+		}
+			break;
 		case WQueen:
 		case BQueen:
-			if (bishopCanMove(board, start, end, delta, errorMessage) || rookCanMove(board, start, end, delta, errorMessage))
-				return true;
-			errorMessage = "Invalid queen move";
-			return false;
+		{
+			getRookMoves(board, pos, moves);
+			getBishopMoves(board, pos, moves);
+		}
+			break;
 		case WPawn:
 		case BPawn:
-			if ((type == WPawn && end.y < start.y) || (type == BPawn && end.y > start.y)) {
-				if (delta.x == 0 && delta.y == 1 && target == Empty)
-					return true;
-				if (delta.x == 1 && delta.y == 1 && target != Empty)
-					return true;
-				if (delta.x == 0 && delta.y == 2 && start.y == (isWhite(type) ? 6 : 1) && target == Empty)
-					return true;
-				//'en-passant' is not supported >:)
+		{
+			int dir = type == BPawn ? 1 : -1;
+			Point next(pos.x, pos.y + dir);
+			if (next.y >= 0 && next.y < 8 && board[next.ind] == Empty) {
+				moves.push_back(next);
+				Point fwd = Point(pos.x, pos.y+(dir*2));
+				if (((pos.y == 1 && type == BPawn) || (pos.y == 6 && type == WPawn)) && 
+					board[fwd.ind] == Empty)
+					moves.push_back(fwd);
 			}
-			errorMessage = "Invalid Pawn move 2";
-			return false;
+			Point right = Point(pos.x+1, pos.y+dir);
+			if (right.y >= 0 && right.y < 8 && right.x >= 0 && right.x < 8 && board[right.ind] != Empty && isWhite(board[right.ind]) != pieceIsWhite)
+				moves.push_back(right);
+			Point left = Point(pos.x-1, pos.y+dir);
+			if (left.y >= 0 && left.y < 8 && left.x >= 0 && left.x < 8 && board[left.ind] != Empty && isWhite(board[left.ind]) != pieceIsWhite)
+				moves.push_back(left);
+		}
+			break;
 		case WKing:
 		case BKing:
-			if (delta.x != 1 && delta.y != 1) {
-				errorMessage = "King can only move 1 square";
-				return false;
-			}
-			if (!bishopCanMove(board, start, end, delta, errorMessage) && !rookCanMove(board, start, end, delta, errorMessage)) {
-				errorMessage = "Invalid king move";
-				return false;
-			}
-			//TODO: king cannot move into check checks
-			return true;
+		{
+			moves.push_back(Point(pos.x + 1, pos.y));
+			moves.push_back(Point(pos.x - 1, pos.y));
+			moves.push_back(Point(pos.x + 1, pos.y - 1));
+			moves.push_back(Point(pos.x,     pos.y - 1));
+			moves.push_back(Point(pos.x - 1, pos.y - 1));
+			moves.push_back(Point(pos.x + 1, pos.y + 1));
+			moves.push_back(Point(pos.x,     pos.y + 1));
+			moves.push_back(Point(pos.x - 1, pos.y + 1));
+		}
+			break;
+		case Empty:
+			break;
 	}
+
+	moves.erase(
+		remove_if(moves.begin(), moves.end(), 
+			[board,pieceIsWhite](const Point& p) { return !(p.x >= 0 && p.x < 8 && p.y >= 0 && p.y < 8 && (isWhite(board[p.ind]) != pieceIsWhite || board[p.ind] == Empty)); }
+		),
+		moves.end()
+	);
 }
 
-bool applyMove(Piece* board, const string& move, string& errorMessage)
+bool applyMove(Piece* board, const Point& start, const Point& end)
 {
-	Point start, end;
-	if (canMove(board, move, start, end, errorMessage))
+	vector<Point> moves;
+	addPossibleMoves(board, start, moves);
+	for (Point& p : moves)
 	{
-		board[end.ind] = board[start.ind];
-		board[start.ind] = Empty;
-
-		//Promote pawns that reach the map edge
-		if (board[end.ind] == BPawn && end.y == 7) {
-			board[end.ind] = BQueen;
+		if (p.ind == end.ind) {
+			board[end.ind] = board[start.ind];
+			board[start.ind] = Empty;
+			return true;
 		}
-		if (board[end.ind] == WPawn && end.y == 0) {
-			board[end.ind] = WQueen;
-		}
-		return true;
 	}
-	else
-		return false;
+	return false;
 }
