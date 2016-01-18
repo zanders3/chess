@@ -4,10 +4,6 @@
 #include <vector>
 #include <algorithm>
 
-bool isWhite(Piece p) {
-	return p >= WKing && p <= WPawn;
-}
-
 void getRookMoves(const Piece* board, const Point& pos, vector<Point>& moves)
 {
 	Point target;
@@ -148,17 +144,35 @@ void addPossibleMoves(const Piece* board, const Point& pos, vector<Point>& moves
 	);
 }
 
-bool applyMove(Piece* board, const Point& start, const Point& end)
+void applyMove(Piece* board, const Point& start, const Point& end)
 {
-	vector<Point> moves;
-	addPossibleMoves(board, start, moves);
-	for (Point& p : moves)
-	{
-		if (p.ind == end.ind) {
-			board[end.ind] = board[start.ind];
-			board[start.ind] = Empty;
-			return true;
-		}
-	}
-	return false;
+	board[end.ind] = board[start.ind];
+	board[start.ind] = Empty;
 }
+
+int pieceValues[] = {
+	-32600,  //WKing,
+	-9,      //WQueen,
+	-5,      //WRook,
+	-3,      //WBishop,
+	-3,      //WKnight,
+	-1,      //WPawn,
+	32600,   //BKing,
+	9,       //BQueen,
+	5,       //BRook,
+	3,       //BBishop,
+	3,       //BKnight,
+	1,       //BPawn,
+	0,       //Empty,
+};
+
+int getBoardValue(const Piece* board)
+{
+	int value = 0;
+	for (int i = 0; i<boardLen; ++i) {
+		value += pieceValues[board[i]];
+	}
+	return value;
+}
+
+

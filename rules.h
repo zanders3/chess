@@ -6,6 +6,10 @@
 
 using namespace std;
 
-void addPossibleMoves(const Piece* board, const Point& pos, vector<Point>& moves);
+inline static bool isWhite(Piece p) {
+	return p >= WKing && p <= WPawn;
+}
 
-bool applyMove(Piece* board, const Point& start, const Point& end);
+void addPossibleMoves(const Piece* board, const Point& pos, vector<Point>& moves);
+void applyMove(Piece* board, const Point& start, const Point& end);
+int getBoardValue(const Piece* board);

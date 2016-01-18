@@ -1,6 +1,7 @@
 #include <iostream>
 #include "rules.h"
 #include "board.h"
+#include "ai_minimax.h"
 
 using namespace std;
 
@@ -59,86 +60,100 @@ KeyPress getInput()
 	}
 }
 
+struct GameState
+{
+	Piece* board;
+	BoardState* boardState;
+	Point sourcePos, highlightPos;
+	vector<Point> validMoves;
+	bool sourceSelected, playerTurn;
+};
+
+void handlePlayerInput(GameState& gameState)
+{
+	KeyPress input = getInput();
+	switch (input) {
+		case Key_Up:
+			gameState.highlightPos = Point(gameState.highlightPos.x, max(gameState.highlightPos.y - 1, 0));
+			break;
+		case Key_Down:
+			gameState.highlightPos = Point(gameState.highlightPos.x, min(gameState.highlightPos.y + 1, 7));
+			break;
+		case Key_Left:
+			gameState.highlightPos = Point(max(gameState.highlightPos.x - 1, 0), gameState.highlightPos.y);
+			break;
+		case Key_Right:
+			gameState.highlightPos = Point(min(gameState.highlightPos.x + 1, 7), gameState.highlightPos.y);
+			break;
+		default:
+			break;
+	}
+	if (input == Key_Enter || input == Key_Space) {
+		if (!gameState.sourceSelected) {
+			if (gameState.board[gameState.highlightPos.ind] != Empty) {
+				gameState.sourceSelected = true;
+				gameState.sourcePos = gameState.highlightPos;
+			}
+		} else {
+			gameState.sourceSelected = false;
+			for (Point move : gameState.validMoves) {
+				if (gameState.highlightPos.ind == move.ind) {
+					applyMove(gameState.board, gameState.sourcePos, gameState.highlightPos);
+					gameState.playerTurn = false;
+					break;
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i<boardLen; ++i)
+		gameState.boardState[i] = BoardState_Empty;
+	if (!gameState.sourceSelected) {
+		gameState.validMoves.clear();
+		addPossibleMoves(gameState.board, gameState.highlightPos, gameState.validMoves);
+	}
+
+	for (Point pos : gameState.validMoves) {
+		gameState.boardState[pos.ind] = gameState.sourceSelected ? BoardState_PossibleMove : BoardState_Selected;
+	}
+	if (gameState.sourceSelected)
+		gameState.boardState[gameState.sourcePos.ind] = BoardState_Selected;
+	gameState.boardState[gameState.highlightPos.ind] = BoardState_Highlighted;
+}
+
 int main(int argc, char** argv)
 {
 	Piece board[] = {
 		BRook, BKnight, BBishop, BQueen, BKing, BBishop, BKnight, BRook,
 		BPawn, BPawn,   BPawn,   BPawn,  BPawn, BPawn,   BPawn,   BPawn,
 		Empty, Empty,   Empty,   Empty,  Empty, Empty,   Empty,   Empty,
-		Empty, Empty,   Empty,   WBishop,  Empty, Empty,   Empty,   Empty,
+		Empty, Empty,   Empty,   Empty,  Empty, Empty,   Empty,   Empty,
 		Empty, Empty,   Empty,   Empty,  Empty, Empty,   Empty,   Empty,
 		Empty, Empty,   Empty,   Empty,  Empty, Empty,   Empty,   Empty,
 		WPawn, WPawn,   WPawn,   WPawn,  WPawn, WPawn,   WPawn,   WPawn,
 		WRook, WKnight, WBishop, WQueen, WKing, WBishop, WKnight, WRook
 	};
 	BoardState boardState[8*8] = { };
+	GameState gameState = {};
+	gameState.board = board;
+	gameState.boardState = boardState;
+	gameState.sourcePos = {};
+	gameState.highlightPos = Point(4, 4);
+	gameState.sourceSelected = false;
+	gameState.playerTurn = true;
 
-	vector<Point> validMoves;
-	Point sourcePos = {};
-	bool sourceSelected = false;
-	Point highlightPos = Point(4, 4);
-	boardState[highlightPos.ind] = BoardState_Highlighted;
+	gameState.boardState[gameState.highlightPos.ind] = BoardState_Highlighted;
 
 	while (true) {
-		printBoard(board, boardState);
+		printBoard(gameState.board, gameState.boardState);
 
-		KeyPress input = getInput();
-		switch (input) {
-			case Key_Up:
-				highlightPos = Point(highlightPos.x, max(highlightPos.y - 1, 0));
-				break;
-			case Key_Down:
-				highlightPos = Point(highlightPos.x, min(highlightPos.y + 1, 7));
-				break;
-			case Key_Left:
-				highlightPos = Point(max(highlightPos.x - 1, 0), highlightPos.y);
-				break;
-			case Key_Right:
-				highlightPos = Point(min(highlightPos.x + 1, 7), highlightPos.y);
-				break;
-			default:
-				break;
+		if (gameState.playerTurn)
+			handlePlayerInput(gameState);
+		else
+		{
+			doMove(board, false);
+			gameState.playerTurn = true;
 		}
-		if (input == Key_Enter || input == Key_Space) {
-			if (!sourceSelected) {
-				if (board[highlightPos.ind] != Empty) {
-					sourceSelected = true;
-					sourcePos = highlightPos;
-				}
-			} else {
-				sourceSelected = false;
-				for (Point move : validMoves) {
-					if (highlightPos.ind == move.ind) {
-						applyMove(board, sourcePos, highlightPos);
-						break;
-					}
-				}
-			}
-		}
-
-		for (int i = 0; i<boardLen; ++i)
-			boardState[i] = BoardState_Empty;
-		if (!sourceSelected) {
-			validMoves.clear();
-			addPossibleMoves(board, highlightPos, validMoves);
-		}
-
-		for (Point pos : validMoves) {
-			boardState[pos.ind] = sourceSelected ? BoardState_PossibleMove : BoardState_Selected;
-		}
-		if (sourceSelected)
-			boardState[sourcePos.ind] = BoardState_Selected;
-		boardState[highlightPos.ind] = BoardState_Highlighted;
-
-/*		bool hasValidMove = false;
-		while (!hasValidMove) {
-			cout << "Enter Move: ";
-			getline(cin, input);
-			hasValidMove = applyMove(board, input, errorMessage);
-			if (!hasValidMove) {
-				cout << errorMessage << endl;
-			}
-		}*/
 	}
 	return 0;
 }
