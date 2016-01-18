@@ -5,74 +5,75 @@
 
 using namespace std;
 
+struct Board
+{
+	Piece board[boardLen];
+};
+
 struct ChessNode
 {
-	static ChessNode* Create(const Piece* board, const Point& start, const Point& end, bool isWhiteMove, int maxDepth)
-	{
-		ChessNode* node = new ChessNode();
-		memcpy(node->boardState, board, sizeof(Piece) * boardLen);
-		applyMove(node->boardState, start, end);
-		node->isWhiteMove = isWhiteMove;
-		node->startPos = start;
-		node->endPos = end;
+	Board board;
+	vector<Point> validMoves;
+};
 
-		if (maxDepth > 0)
-			node->expandChildren(maxDepth);
+int findBestMove(ChessNode* nodes, int depth, int maxDepth, Point* bestStartPos, Point* bestEndPos, bool isWhiteMove);
 
-		return node;
-	}
+int findBestScore(ChessNode* nodes, const Point& start, const Point& end, int depth, int maxDepth, bool isWhiteMove)
+{
+	nodes[depth].board = nodes[depth-1].board;
+	Piece* boardState = nodes[depth].board.board;
+	applyMove(boardState, start, end);
 
-	void expandChildren(int maxDepth) {
-		vector<Point> validMoves;
-		for (int i = 0; i<boardLen; ++i) {
-			if (boardState[i] == Empty)
-				continue;
-			if (isWhiteMove != isWhite(boardState[i]))
-				continue;
-			Point startPos(i%8, i/8);
-			validMoves.clear();
-			addPossibleMoves(boardState, startPos, validMoves);
-			for (Point& endPos : validMoves) {
-				children.push_back(ChessNode::Create(boardState, startPos, endPos, !isWhiteMove, maxDepth - 1));
+	if (depth >= maxDepth)
+		return getBoardValue(boardState);
+	else
+		return findBestMove(nodes, depth, maxDepth, nullptr, nullptr, isWhiteMove);
+}
+
+int findBestMove(ChessNode* nodes, int depth, int maxDepth, Point* bestStartPos, Point* bestEndPos, bool isWhiteMove)
+{
+	Piece* boardState = nodes[depth].board.board;
+	int bestValue = INT_MIN;
+	for (int i = 0; i<boardLen; ++i) {
+		if (boardState[i] == Empty)
+			continue;
+		if (isWhiteMove != isWhite(boardState[i]))
+			continue;
+		Point startPos(i%8, i/8);
+		nodes[depth].validMoves.clear();
+
+		addPossibleMoves(boardState, startPos, nodes[depth].validMoves);
+		for (Point& endPos : nodes[depth].validMoves) {
+			int score = findBestScore(nodes, startPos, endPos, depth+1, maxDepth, !isWhiteMove);
+			if (score > bestValue) {
+				bestValue = score;
+				if (bestStartPos != nullptr)
+					*bestStartPos = startPos;
+				if (bestEndPos != nullptr)
+					*bestEndPos = endPos;
 			}
 		}
 	}
+	return bestValue;
+}
 
-	int getMaxScore() {
-		if (children.size() == 0)
-			return getBoardValue(boardState);
-		
-		int bestValue = INT_MIN;
-		for (ChessNode* child : children)
-			bestValue = max(bestValue, child->getMaxScore());
-		return bestValue;
-	}
-
-	vector<ChessNode*> children;
-	Piece boardState[boardLen];
-	Point startPos, endPos;
-	bool isWhiteMove;
-};
-
-void doMove(Piece* board, bool isWhiteMove)
+void doMove(Piece* board, BoardState* boardState, bool isWhiteMove)
 {
-	cout << "Thinking..." << endl;
-	ChessNode chessNode;
-	memcpy(chessNode.boardState, board, sizeof(Piece) * boardLen);
-	chessNode.isWhiteMove = isWhiteMove;
-	chessNode.expandChildren(5);
+	const int maxDepth = 6;
+	ChessNode aiNodes[maxDepth];
+	memcpy(&aiNodes[0].board, board, sizeof(Board));
 
-	cout << "Finding best move..." << endl;
-	ChessNode* bestMove = nullptr;
-	int bestScore = INT_MIN;
-	for (ChessNode* child : chessNode.children) {
-		int score = child->getMaxScore();
-		if (score > bestScore) {
-			bestMove = child;
-			bestScore = score;
-		}
+	Point startPos, endPos;
+	cout << "Thinking...";
+	int score = findBestMove(aiNodes, 0, maxDepth - 1, &startPos, &endPos, false);
+	cout << "\rMove score " << score << endl;
+
+	for (int i = 0; i<boardLen; i++)
+		boardState[i] = BoardState_Empty;
+
+	if (score > INT_MIN) {
+		boardState[startPos.ind] = BoardState_Highlighted;
+		boardState[endPos.ind] = BoardState_PossibleMove;
+		applyMove(board, startPos, endPos);
 	}
-	cout << "Best move " << bestScore << endl;
-	if (bestMove != nullptr)
-		applyMove(board, bestMove->startPos, bestMove->endPos);
 }

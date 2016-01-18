@@ -2,4 +2,4 @@
 #include "board.h"
 
 //Implements a MiniMax Chess AI
-void doMove(Piece* board, bool isWhiteMove);
+void doMove(Piece* board, BoardState* boardState, bool isWhiteMove);

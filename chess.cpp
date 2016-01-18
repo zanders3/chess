@@ -151,7 +151,7 @@ int main(int argc, char** argv)
 			handlePlayerInput(gameState);
 		else
 		{
-			doMove(board, false);
+			doMove(gameState.board, gameState.boardState, false);
 			gameState.playerTurn = true;
 		}
 	}
